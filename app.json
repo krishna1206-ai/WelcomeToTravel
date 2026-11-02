@@ -1,15 +1,18 @@
 {
   "expo": {
-    "name": "welcometo-travel",
+    "name": "Welcome to Travel",
     "slug": "welcometo-travel",
+    "scheme": "welcometotravel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "travel.welcometo.app"
     },
     "android": {
+      "package": "travel.welcometo.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +23,26 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-image",
+      "expo-splash-screen",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to use a photo you choose as your profile picture."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native"
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
