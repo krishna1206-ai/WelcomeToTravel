@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { api, API_URL } from '@/api/client';
+import { api, photoSource } from '@/api/client';
 import type { Tour, TourCollection } from '@/data/tours';
 import { useAuth } from '@/state/auth';
 
@@ -148,8 +148,8 @@ const StoreContext = createContext<Store | null>(null);
 function toTour(tour: ApiTour): Tour {
   return {
     ...tour,
-    photo: tour.photo ? { uri: API_URL + tour.photo } : null,
-    gallery: (tour.gallery ?? []).map((photo) => ({ uri: API_URL + photo })),
+    photo: tour.photo ? photoSource(tour.photo) : null,
+    gallery: (tour.gallery ?? []).map(photoSource),
   };
 }
 

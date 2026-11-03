@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { API_URL } from '@/api/client';
+import { photoSource } from '@/api/client';
 import type { User } from '@/state/auth';
 import { colors, fonts, radius } from '@/theme';
 
@@ -12,7 +12,7 @@ export function Avatar({ user, size = 44 }: { user: User; size?: number }) {
   if (user.photo) {
     return (
       <Image
-        source={{ uri: API_URL + user.photo }}
+        source={photoSource(user.photo)}
         style={[styles.circle, dimensions]}
         contentFit="cover"
         transition={150}

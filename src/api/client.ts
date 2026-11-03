@@ -3,6 +3,14 @@ import { Platform } from 'react-native';
 
 export const API_URL =(process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4100').replace(/\/$/, '');
 
+// ngrok's free plan shows a warning page to browsers unless this header is sent. Other hosts ignore it.
+const SERVER_HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+
+// A server photo for <Image>. The header goes with it so photos load on the web too.
+export function photoSource(photo: string) {
+  return { uri: API_URL + photo, headers: SERVER_HEADERS };
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -15,7 +23,10 @@ export class ApiError extends Error {
 async function send<T>(path: string, init: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(API_URL + path, init);
+    response = await fetch(API_URL + path, {
+      ...init,
+      headers: { ...(init.headers as Record<string, string>), ...SERVER_HEADERS },
+    });
   } catch {
     throw new ApiError('Can’t reach the server. Check your connection and try again.', 0);
   }
