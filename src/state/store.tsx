@@ -117,6 +117,7 @@ type Store = {
 const BUILD_KEY = 'welcometo-travel/build/v1';
 const TOURS_KEY = 'welcometo-travel/tours/v1';
 const REFRESH_MS = 30_000;
+const TOURS_REFRESH_MS = 60_000;
 
 const DEFAULT_BUILD: BuildChoices = {
   stay: 'Premium',
@@ -193,6 +194,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const result = await fetchTours();
     setTours(result.tours);
     setToursStatus(result.status);
+  }, []);
+
+  // Picks up trips the team added, changed or deleted. If the server can't be reached, the list stays as it is.
+  useEffect(() => {
+    const refresh = () => {
+      api<{ tours: ApiTour[] }>('/api/tours')
+        .then((data) => {
+          AsyncStorage.setItem(TOURS_KEY, JSON.stringify(data.tours)).catch(() => undefined);
+          setTours(data.tours.map(toTour));
+          setToursStatus('ready');
+        })
+        .catch(() => undefined);
+    };
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') refresh();
+    }, TOURS_REFRESH_MS);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
