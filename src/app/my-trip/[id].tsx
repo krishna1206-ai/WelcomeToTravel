@@ -190,6 +190,20 @@ export default function MyTripScreen() {
 
           {!cancelled && (
             <>
+              {booking.pickupPoint ? (
+                <Reveal style={styles.section}>
+                  <Heading>Your pick-up point</Heading>
+                  <Card style={styles.sectionBody}>
+                    <View style={styles.meeting}>
+                      <Float style={styles.meetingIcon}>
+                        <Ionicons name="bus-outline" size={22} color={colors.primary} />
+                      </Float>
+                      <Text style={styles.meetingText}>{booking.pickupPoint}</Text>
+                    </View>
+                  </Card>
+                </Reveal>
+              ) : null}
+
               <Reveal style={styles.section}>
                 <Heading>Meeting point</Heading>
                 <Card style={styles.sectionBody}>

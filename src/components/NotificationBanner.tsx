@@ -74,7 +74,8 @@ export function NotificationBanner() {
         accessibilityRole="alert"
         onPress={() => {
           setDismissed((current) => ({ ...current, [kind]: id }));
-          router.push(kind === 'chat' ? '/chat' : '/notifications');
+          if (kind === 'chat') router.push('/chat');
+          else router.push({ pathname: '/notification/[id]', params: { id } });
         }}>
         <Ionicons name="notifications" size={20} color={colors.primary} />
         <View style={styles.body}>

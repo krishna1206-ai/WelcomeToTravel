@@ -30,7 +30,6 @@ const MAX_TRAVELLERS = 12;
 const STEPS = ['Booking details', 'Billing & contact', 'Payment'];
 const GENDERS = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
 const VISAS = ['Working holiday', 'Tourist', 'Student', 'Citizen or resident', 'Other'];
-const FIRST_TOUR = 'None, this is my first';
 
 type Person = {
   firstName: string;
@@ -44,7 +43,7 @@ type Person = {
   dietary: string;
 };
 
-type Errors = Partial<Record<keyof Person | 'date' | 'previousTour' | 'travellingWith' | 'visa' | 'terms', string>>;
+type Errors = Partial<Record<keyof Person | 'date' | 'pickupPoint' | 'travellingWith' | 'visa' | 'terms', string>>;
 
 function personFrom(user: User): Person {
   const [firstName = '', ...rest] = user.name.trim().split(/\s+/);
@@ -177,7 +176,7 @@ export default function BookingScreen() {
   useStatusBar('dark');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, ready } = useAuth();
-  const { getTour, tours, addBooking, payBooking } = useStore();
+  const { getTour, addBooking, payBooking } = useStore();
   const terms = useBookingTerms();
   const tour = getTour(id);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -185,8 +184,8 @@ export default function BookingScreen() {
   const [step, setStep] = useState(0);
   const [date, setDate] = useState('');
   const [travellers, setTravellers] = useState(1);
+  const [pickupPoint, setPickupPoint] = useState('');
   const [traveller, setTraveller] = useState<Person | null>(null);
-  const [previousTour, setPreviousTour] = useState('');
   const [sameAsTraveller, setSameAsTraveller] = useState(true);
   const [billing, setBilling] = useState<Person | null>(null);
   const [specialRequirements, setSpecialRequirements] = useState('');
@@ -209,12 +208,12 @@ export default function BookingScreen() {
   const lead = traveller ?? personFrom(user);
   const payer = sameAsTraveller ? lead : (billing ?? personFrom(user));
   const limits = ageLimits(tour);
+  const pickupPoints = tour.pickupPoints ?? [];
   const ends = endDate(tour, date);
   const currency = terms?.currency ?? 'AUD';
   const amounts = tour.price && tour.price > 0 && terms ? checkoutAmounts(tour.price, travellers, terms) : null;
   const usesDeposit = Boolean(amounts?.depositAllowed) && plan === 'deposit';
   const dueNowCents = amounts ? (usesDeposit ? amounts.depositCents : amounts.totalCents) : 0;
-  const tourOptions = [FIRST_TOUR, ...tours.map((item) => item.title)];
 
   function goTo(next: number) {
     setErrors({});
@@ -227,12 +226,12 @@ export default function BookingScreen() {
     const next: Errors = {};
     if (step === 0) {
       if (!isValidFutureDate(date)) next.date = 'Choose a start date.';
+      if (pickupPoints.length > 0 && !pickupPoints.includes(pickupPoint)) next.pickupPoint = 'Choose a pick-up point.';
       checkPerson(lead, next);
       const age = ageOn(lead.dateOfBirth, date || formatDate(new Date()));
       if (limits && age !== null && (age < limits.min || age > limits.max)) {
         next.dateOfBirth = `This tour is for travellers aged ${limits.min} to ${limits.max}.`;
       }
-      if (!previousTour) next.previousTour = 'Choose an option.';
     }
     if (step === 1) {
       if (!sameAsTraveller) checkPerson(payer, next);
@@ -255,7 +254,8 @@ export default function BookingScreen() {
         date: date.trim(),
         travellers,
         plan: usesDeposit ? 'deposit' : 'full',
-        traveller: { ...trimmed(lead), previousTour },
+        pickupPoint: pickupPoints.length > 0 ? pickupPoint : undefined,
+        traveller: trimmed(lead),
         billing: { ...trimmed(payer), specialRequirements: specialRequirements.trim(), travellingWith: travellingWith.trim(), visa },
         agreedToTerms: true,
       });
@@ -323,6 +323,15 @@ export default function BookingScreen() {
                     </Pressable>
                   </View>
                 </View>
+                {pickupPoints.length > 0 && (
+                  <ChoiceChips
+                    label="Pick-up point"
+                    options={pickupPoints}
+                    value={pickupPoint}
+                    error={errors.pickupPoint}
+                    onChange={setPickupPoint}
+                  />
+                )}
               </Card>
 
               <Card style={styles.section}>
@@ -331,13 +340,6 @@ export default function BookingScreen() {
                   The lead traveller. You can tell us who else is coming in the next step.
                 </Text>
                 <PersonFields person={lead} errors={errors} onChange={(changes) => setTraveller({ ...lead, ...changes })} />
-                <ChoiceChips
-                  label="Which Welcome to Travel tour did you do?"
-                  options={tourOptions}
-                  value={previousTour}
-                  error={errors.previousTour}
-                  onChange={setPreviousTour}
-                />
               </Card>
             </>
           )}
@@ -399,6 +401,7 @@ export default function BookingScreen() {
                   Starts {date}
                   {ends ? ` · Ends ${ends}` : ''} · {travellers} {travellers === 1 ? 'traveller' : 'travellers'}
                 </Text>
+                {pickupPoint !== '' && <Text style={styles.sectionNote}>Pick-up: {pickupPoint}</Text>}
                 {amounts ? (
                   <>
                     <SummaryRow

@@ -40,6 +40,7 @@ export type Tour = {
   photo: ImageProps['source'];
   gallery: { uri: string }[];
   meetingPoint: string;
+  pickupPoints?: string[];
   transport?: string;
   groupSize?: string;
   ageRange?: string;

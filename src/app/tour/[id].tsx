@@ -181,6 +181,21 @@ export default function TourDetailsScreen() {
 
           <TourInclusions tour={tour} />
 
+          {(tour.pickupPoints ?? []).length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Pick-up points</Text>
+              <View style={styles.pickups}>
+                {(tour.pickupPoints ?? []).map((point) => (
+                  <View key={point} style={styles.pickup}>
+                    <Ionicons name="location-outline" size={18} color={colors.primary} />
+                    <Text style={styles.pickupText}>{point}</Text>
+                  </View>
+                ))}
+                <Text style={styles.pickupNote}>You’ll choose one when you book.</Text>
+              </View>
+            </>
+          )}
+
           {tour.route.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Your route</Text>
@@ -335,6 +350,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
+  pickups: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  pickup: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  pickupText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.text },
+  pickupNote: { fontFamily: fonts.regular, fontSize: 13, color: colors.textMuted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     backgroundColor: colors.primarySoft,

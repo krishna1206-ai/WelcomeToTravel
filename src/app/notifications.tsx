@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { FadeIn, Pulse, ScalePressable, staggerDelay } from '@/components/Motion';
-import { Button } from '@/components/ui';
+import { errorMessage } from '@/api/client';
+import { FadeIn, PopIn, Pulse, ScalePressable, staggerDelay } from '@/components/Motion';
+import { Button, TextLink } from '@/components/ui';
 import { useAuth } from '@/state/auth';
 import { CHAT_NAME, useStore } from '@/state/store';
 import { colors, fonts, radius, spacing } from '@/theme';
@@ -12,7 +14,37 @@ import { useStatusBar } from '@/utils/useStatusBar';
 export default function NotificationsScreen() {
   useStatusBar('dark');
   const { user } = useAuth();
-  const { notifications, chat, unreadChat, markNotificationRead } = useStore();
+  const { notifications, chat, unreadChat, deleteNotifications } = useStore();
+  const [selected, setSelected] = useState<number[]>([]);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const selecting = selected.length > 0;
+
+  function toggle(id: number) {
+    setConfirming(false);
+    setError('');
+    setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function clearSelection() {
+    setSelected([]);
+    setConfirming(false);
+    setError('');
+  }
+
+  async function remove() {
+    setBusy(true);
+    setError('');
+    try {
+      await deleteNotifications(selected);
+      clearSelection();
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!user) {
     return (
@@ -35,6 +67,53 @@ export default function NotificationsScreen() {
     : `${lastMessage.sender === 'customer' ? 'You: ' : ''}${lastMessage.body}`;
 
   return (
+    <View style={styles.screen}>
+    {selecting && (
+      <FadeIn distance={-10} duration={200} style={styles.bar}>
+        {confirming ? (
+          <>
+            <Text style={styles.barTitle}>
+              Delete {selected.length} {selected.length === 1 ? 'notification' : 'notifications'}? This can’t be undone.
+            </Text>
+            <View style={styles.barActions}>
+              <Button label="Keep" variant="outline" style={styles.barButton} onPress={() => setConfirming(false)} />
+              <Button
+                label={busy ? 'Deleting…' : 'Delete'}
+                style={[styles.barButton, styles.deleteButton]}
+                onPress={busy ? () => undefined : remove}
+              />
+            </View>
+          </>
+        ) : (
+          <View style={styles.barRow}>
+            <Text style={styles.barTitle}>{selected.length} selected</Text>
+            <TextLink
+              label={selected.length === notifications.length ? 'Select none' : 'Select all'}
+              onPress={() =>
+                setSelected(selected.length === notifications.length ? [] : notifications.map((item) => item.id))
+              }
+            />
+            <ScalePressable
+              style={styles.trash}
+              pressedScale={0.88}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${selected.length} selected`}
+              onPress={() => setConfirming(true)}>
+              <Ionicons name="trash-outline" size={20} color={colors.white} />
+            </ScalePressable>
+            <ScalePressable
+              style={styles.close}
+              pressedScale={0.88}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel selection"
+              onPress={clearSelection}>
+              <Ionicons name="close" size={20} color={colors.text} />
+            </ScalePressable>
+          </View>
+        )}
+        {error !== '' && <Text style={styles.error}>{error}</Text>}
+      </FadeIn>
+    )}
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <FadeIn distance={14}>
       <ScalePressable
@@ -57,30 +136,55 @@ export default function NotificationsScreen() {
       </ScalePressable>
       </FadeIn>
 
-      {notifications.map((item, index) => (
+      {notifications.map((item, index) => {
+        const isSelected = selected.includes(item.id);
+        return (
         <FadeIn key={item.id} delay={staggerDelay(index, 60)} distance={14}>
         <ScalePressable
-          style={styles.row}
+          style={[styles.row, isSelected && styles.rowSelected]}
           pressedScale={0.98}
-          accessibilityRole="button"
+          delayLongPress={400}
+          accessibilityRole={selecting ? 'checkbox' : 'button'}
+          accessibilityState={selecting ? { checked: isSelected } : undefined}
+          accessibilityHint={selecting ? undefined : 'Long-press to select'}
           accessibilityLabel={`${item.read ? '' : 'Unread. '}${item.title}. ${item.body}`}
-          onPress={() => {
-            if (!item.read) markNotificationRead(item.id);
-            if (item.link) router.push(item.link as Href);
-          }}>
-          <View style={styles.icon}>
-            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-          </View>
+          onLongPress={() => toggle(item.id)}
+          onPress={() =>
+            selecting ? toggle(item.id) : router.push({ pathname: '/notification/[id]', params: { id: item.id } })
+          }>
+          {selecting ? (
+            <PopIn key={isSelected ? 'on' : 'off'} style={[styles.icon, isSelected && styles.iconSelected]}>
+              <Ionicons
+                name={isSelected ? 'checkmark' : 'ellipse-outline'}
+                size={20}
+                color={isSelected ? colors.white : colors.textMuted}
+              />
+            </PopIn>
+          ) : (
+            <View style={styles.icon}>
+              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+            </View>
+          )}
           <View style={styles.body}>
             <Text style={styles.rowTitle}>{item.title}</Text>
-            <Text style={styles.rowText}>{item.body}</Text>
+            <Text style={styles.rowText} numberOfLines={2}>
+              {item.body}
+            </Text>
             <Text style={styles.rowDate}>{item.createdAt} UTC</Text>
           </View>
-          {!item.read && <Pulse style={styles.unreadDot} />}
+          <View style={styles.side}>
+            {!item.read && <Pulse style={styles.unreadDot} />}
+            {!selecting && <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
+          </View>
         </ScalePressable>
         </FadeIn>
-      ))}
+        );
+      })}
+      {notifications.length > 0 && !selecting && (
+        <Text style={styles.hint}>Long-press a notification to select and delete it.</Text>
+      )}
     </ScrollView>
+    </View>
   );
 }
 
@@ -129,6 +233,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1 },
+  rowSelected: { borderColor: colors.primary, borderWidth: 2, backgroundColor: '#F4F8FE' },
+  iconSelected: { backgroundColor: colors.primary },
+  hint: { fontFamily: fonts.regular, fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xs },
+  bar: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  barTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.text },
+  barActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  barButton: { flex: 1 },
+  deleteButton: { backgroundColor: colors.error },
+  trash: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  close: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.subtleStatus,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  error: { fontFamily: fonts.medium, fontSize: 13, color: colors.error, marginTop: spacing.sm },
+  side: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   unreadDot: {
     width: 10,
     height: 10,

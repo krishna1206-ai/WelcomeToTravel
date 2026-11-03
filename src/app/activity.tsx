@@ -139,6 +139,7 @@ export default function ActivityScreen() {
                 {booking.travellers} {booking.travellers === 1 ? 'traveller' : 'travellers'}
                 {booking.total !== null && ` · Estimated ${formatPrice(booking.total)}`}
               </Text>
+              {booking.pickupPoint ? <Text style={styles.line}>Pick-up: {booking.pickupPoint}</Text> : null}
               <BookingPayment booking={booking} />
               {booking.status !== 'cancelled' && (
                 <View style={styles.myTrip}>

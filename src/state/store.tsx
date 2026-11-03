@@ -30,6 +30,7 @@ export type Booking = {
   status: RequestStatus;
   paymentStatus: PaymentStatus;
   paymentPlan?: 'full' | 'deposit';
+  pickupPoint?: string;
   feeCents?: number;
   totalCents?: number;
   paidCents?: number;
@@ -41,6 +42,7 @@ export type NewBooking = {
   date: string;
   travellers: number;
   plan?: 'full' | 'deposit';
+  pickupPoint?: string;
   traveller?: Record<string, string>;
   billing?: Record<string, string>;
   agreedToTerms?: boolean;
@@ -101,6 +103,7 @@ type Store = {
   cancelBooking: (id: number) => Promise<void>;
   payBooking: (id: number) => Promise<void>;
   markNotificationRead: (id: number) => void;
+  deleteNotifications: (ids: number[]) => Promise<void>;
   refreshAccount: () => Promise<void>;
   refreshChat: () => Promise<void>;
   sendChatMessage: (message: string) => Promise<void>;
@@ -388,6 +391,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [token],
   );
 
+  // Removed from the screen straight away. If the server refuses, they come back.
+  const deleteNotifications = useCallback(
+    async (ids: number[]) => {
+      const removed = new Set(ids);
+      let previous: Notification[] = [];
+      setAccount((current) => {
+        previous = current.notifications;
+        return { ...current, notifications: current.notifications.filter((item) => !removed.has(item.id)) };
+      });
+      try {
+        await api('/api/me/notifications', { method: 'DELETE', token, body: { ids } });
+      } catch (error) {
+        setAccount((current) => ({ ...current, notifications: previous }));
+        throw error;
+      }
+    },
+    [token],
+  );
+
   const cancelBooking = useCallback(
     async (id: number) => {
       const data = await api<{ booking: Booking }>(`/api/bookings/${id}/cancel`, { method: 'POST', token });
@@ -460,6 +482,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelBooking,
       payBooking,
       markNotificationRead,
+      deleteNotifications,
       refreshAccount,
       refreshChat,
       sendChatMessage,
@@ -488,6 +511,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelBooking,
       payBooking,
       markNotificationRead,
+      deleteNotifications,
       refreshAccount,
       refreshChat,
       sendChatMessage,

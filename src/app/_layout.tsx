@@ -82,6 +82,7 @@ function RootLayout() {
         <Stack.Screen name="activity" options={{ title: 'Saved & requests' }} />
         <Stack.Screen name="my-trip/[id]" options={{ title: 'My Trip' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="notification/[id]" options={{ title: 'Notification' }} />
         <Stack.Screen name="chat" options={{ title: 'Welcome to Travel' }} />
         <Stack.Screen name="coming-soon" options={{ title: '' }} />
         </Stack>
